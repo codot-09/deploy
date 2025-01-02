@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To'lov Ma'lumotlari</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #2c5364);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #f1f1f1;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            width: 400px;
+            position: relative;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            outline: none;
+        }
+        input:focus {
+            border-color: #00aaff;
+            box-shadow: 0 0 10px #00aaff;
+        }
+        .expiry-input {
+            width: 50%;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            background: #00aaff;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #007acc;
+        }
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            color: #fff;
+        }
+        .message.success {
+            background: #2d6a4f;
+        }
+        /* Loading animation styles */
+        .loader {
+            width: 50px;
+            padding: 8px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: #25b09b;
+            --_m: 
+                conic-gradient(#0000 10%,#000),
+                linear-gradient(#000 0 0) content-box;
+            -webkit-mask: var(--_m);
+                    mask: var(--_m);
+            -webkit-mask-composite: source-out;
+                    mask-composite: subtract;
+            animation: l3 1s infinite linear;
+        }
+
+        @keyframes l3 {
+            to { transform: rotate(1turn); }
+        }
+
+        /* Loader visibility */
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #f1f1f1;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>To'lov Ma'lumotlari</h2>
+        <form id="paymentForm">
+            <label for="cardNumber">Karta raqami:</label>
+            <input type="text" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="16" required>
+
+            <label for="expiryDate">Amal muddati (MM/YY):</label>
+            <input type="text" id="expiryDate" class="expiry-input" placeholder="01/25" required>
+
+            <label for="amount">To'lov summasi:</label>
+            <input type="number" id="amount" placeholder="2000" min="2000" required>
+
+            <button type="submit">Yuborish</button>
+        </form>
+    </div>
+    <div id="message" class="message"></div>
+
+    <!-- Loading animation container -->
+    <div id="loading" class="loading">
+        <div class="loader"></div>
+    </div>
+
+    <script>
+        const paymentForm = document.getElementById('paymentForm');
+        const messageBox = document.getElementById('message');
+        const loadingBox = document.getElementById('loading');
+
+        paymentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            if (amount < 2000) {
+                showMessage("To'lov summasi 2000 so'mdan kam bo'lmasligi kerak!", false);
+                return;
+            }
+
+            const formData = {
+                cardNumber: document.getElementById('cardNumber').value,
+                expiryDate: document.getElementById('expiryDate').value,
+                amount,
+            };
+
+            localStorage.setItem('paymentData', JSON.stringify(formData));
+
+            showLoading();
+
+            setTimeout(() => {
+                showMessage("To'lov muvaffaqiyatli amalga oshirildi!", true);
+                hideLoading();
+            }, 5000); // 5 seconds delay
+        });
+
+        function showMessage(message, success = false) {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.className = `message ${success ? 'success' : ''}`;
+            setTimeout(() => messageBox.style.display = 'none', 3000);
+        }
+
+        function showLoading() {
+            loadingBox.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loadingBox.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
