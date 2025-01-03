@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -57,24 +57,49 @@
 
     <script>
         const userContainer = document.getElementById('userContainer');
-        const userData = JSON.parse(localStorage.getItem('paymentData'));
 
-        if (userData) {
-            userContainer.innerHTML = `
-                <div class="user-data">
-                    <p><strong>Karta raqami:</strong> ${userData.cardNumber}</p>
-                    <p><strong>Amal muddati:</strong> ${userData.expiryDate}</p>
-                    <p><strong>To'lov summasi:</strong> ${userData.amount}</p>
-                    <button onclick="deleteData()">Ma'lumotlarni o'chirish</button>
-                </div>
-            `;
-        } else {
-            userContainer.innerHTML = '<p>Hozircha ma\'lumotlar mavjud emas.</p>';
-        }
+        // Serverdan ma'lumotlarni olish
+        fetch('https://paymentme.netlify.app/api/paymentData')  // Netlify server API endpointi
+            .then(response => response.json())
+            .then(data => {
+                if (data) {
+                    userContainer.innerHTML = `
+                        <div class="user-data">
+                            <p><strong>Karta raqami:</strong> ${data.cardNumber}</p>
+                            <p><strong>Amal muddati:</strong> ${data.expiryDate}</p>
+                            <p><strong>To'lov summasi:</strong> ${data.amount}</p>
+                            <button onclick="deleteData()">Ma'lumotlarni o'chirish</button>
+                        </div>
+                    `;
+                } else {
+                    userContainer.innerHTML = '<p>Hozircha ma\'lumotlar mavjud emas.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Xato yuz berdi:', error);
+                userContainer.innerHTML = '<p>Ma\'lumotlarni olishda xatolik yuz berdi.</p>';
+            });
 
+        // Ma'lumotlarni o'chirish (serverdan o'chirish uchun ham ishlatilishi mumkin)
         function deleteData() {
-            localStorage.removeItem('paymentData');
-            location.reload();
+            fetch('https://paymentme.netlify.app/api/deletePaymentData', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    userContainer.innerHTML = '<p>Ma\'lumotlar muvaffaqiyatli o\'chirildi.</p>';
+                } else {
+                    userContainer.innerHTML = '<p>Ma\'lumotlarni o\'chirishda xatolik yuz berdi.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Xato yuz berdi:', error);
+                userContainer.innerHTML = '<p>Ma\'lumotlarni o\'chirishda xatolik yuz berdi.</p>';
+            });
         }
     </script>
 </body>
