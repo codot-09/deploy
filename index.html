@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Game</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Start Page -->
+  <div id="start-page" class="container">
+    <button class="game-btn animated-play" id="play-btn">Play</button>
+  </div>
+
+  <!-- Game Selection Page -->
+  <div id="game-selection" class="game-container" style="display:none;">
+    <div class="game-title">Choose Your Game</div>
+    <div class="game-options">
+      <div class="game-option">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Tic_tac_toe.svg/1200px-Tic_tac_toe.svg.png" alt="Tic-Tac-Toe Game" class="game-img">
+        <button class="game-btn" id="tic-tac-toe-btn">Tic-Tac-Toe</button>
+      </div>
+      <div class="game-option">
+        <img src="https://store-images.s-microsoft.com/image/apps.44075.14481417638819744.a7c0baeb-206f-4d5e-809a-5ce73ad58842.d44024c3-7006-48a9-89d4-83f22557b68a?w=180&h=180&q=60" alt="Memory Game" class="game-img">
+        <button class="game-btn" id="memory-game-btn">Memory Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timer Display -->
+  <div class="timer-container">
+    <div id="timer" class="timer">00:00</div>
+  </div>
+  
+
+
+  <!-- Tic-Tac-Toe Game Page -->
+  <div id="tic-tac-toe" class="game-container" style="display:none;">
+    <div class="game-title">Tic-Tac-Toe</div>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Tic_tac_toe.svg/1200px-Tic_tac_toe.svg.png" alt="Tic-Tac-Toe Game" class="game-img">
+    <div id="board" class="board"></div>
+    <button class="game-btn menu-btn" id="back-to-menu-ttt">Back to Menu</button>
+</div>
+
+
+  <!-- Memory Game Page -->
+  <div id="memory-game" class="game-container" style="display:none;">
+    <div class="game-title">Memory Game</div>
+    <img src="https://store-images.s-microsoft.com/image/apps.44075.14481417638819744.a7c0baeb-206f-4d5e-809a-5ce73ad58842.d44024c3-7006-48a9-89d4-83f22557b68a?w=180&h=180&q=60" alt="Memory Game" class="game-img">
+    <div id="memory-board" class="board"></div>
+    <button class="game-btn menu-btn" id="back-to-menu-memory">Back to Menu</button>
+</div>
+
+
+  <script src="scripts.js"></script>
+</body>
+</html>
