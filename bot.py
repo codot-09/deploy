@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 # Sozlamalar
-API_KEY = "	1348c1b6-f5e0-414a-8d4c-585c95c92e59"
+API_KEY = "1348c1b6-f5e0-414a-8d4c-585c95c92e59"
 BASE_URL = "https://apihut.in/api/download/videos"
 BOT_TOKEN = "7567730285:AAGm3RDt_mdOC5H5VnfiEPjL6OZx0wsm214"
 MAX_REQUESTS_PER_MINUTE = 5
