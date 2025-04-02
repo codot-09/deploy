@@ -7,26 +7,28 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 import logging
 from pathlib import Path
+from flask import Flask, request
 
-API_KEY = "	1348c1b6-f5e0-414a-8d4c-585c95c92e59"
+API_KEY = "06a735a0-4d0f-425d-9655-1ba8728e96ab"
 BASE_URL = "https://apihut.in/api/download/videos"
 BOT_TOKEN = "7567730285:AAGm3RDt_mdOC5H5VnfiEPjL6OZx0wsm214"
 MAX_REQUESTS_PER_MINUTE = 5
 TEMP_DIR = Path("/tmp/videos")
-PORT = int(os.environ.get("PORT", 5000))  # Render uchun port sozlamasi
+PORT = int(os.environ.get("PORT", 5000))  # Render uchun port
 
+# Logging sozlamalari
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+# Global o'zgaruvchilar
 USER_REQUESTS = {}
 REQUEST_LOCK = Lock()
-
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 executor = ThreadPoolExecutor(max_workers=5)
+app = Flask(__name__)
 
 class VideoDownloadError(Exception):
     pass
@@ -61,7 +63,7 @@ def download_video_api(video_url: str, user_id: int) -> Optional[str]:
         response = requests.post(BASE_URL, json=payload, headers=headers, timeout=15)
         
         if response.status_code == 403:
-            logger.error("API access forbidden - check API key validity")
+            logger.error("API access forbidden - check API key")
             return None
             
         response.raise_for_status()
@@ -120,8 +122,9 @@ def download_and_send_video(download_url: str, chat_id: int) -> None:
             except OSError as e:
                 logger.error(f"File cleanup error: {e}")
 
+# Bot handlers
 @bot.message_handler(commands=['start'])
-def send_welcome(message: telebot.types.Message) -> None:
+def send_welcome(message):
     welcome_text = (
         "Instagram video yuklovchi botga xush kelibsiz.\n"
         "Instagram'dan video yuklash uchun video linkini yuboring.\n\n"
@@ -130,7 +133,7 @@ def send_welcome(message: telebot.types.Message) -> None:
     bot.reply_to(message, welcome_text)
 
 @bot.message_handler(func=lambda message: True)
-def handle_message(message: telebot.types.Message) -> None:
+def handle_message(message):
     chat_id = message.chat.id
     video_url = message.text.strip()
     
@@ -162,18 +165,36 @@ def handle_message(message: telebot.types.Message) -> None:
     executor.submit(download_and_send_video, download_url, chat_id)
     bot.delete_message(chat_id, status_msg.message_id)
 
+# Webhook endpoint for Render
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    return 'Bad request', 400
+
 def run_bot():
     ensure_temp_dir()
     logger.info("Bot ishga tushirilmoqda...")
     
     try:
-        # Webhook sozlamalari Render uchun
+        # Webhook ni o'chirib, polling ishga tushirish
         bot.remove_webhook()
         time.sleep(1)
-        bot.set_webhook(url=f"https://your-render-app-name.onrender.com/{BOT_TOKEN}")
         
-        # Polling rejimida ishlash
-        bot.polling(none_stop=True, interval=1, timeout=20)
+        # Agar Renderda ishlayotgan bo'lsa, webhook ishlatamiz
+        if 'RENDER' in os.environ:
+            logger.info("Render muhitida webhook ishlatilmoqda")
+            bot.set_webhook(url=f"https://your-render-app.onrender.com/webhook")
+            
+            # Flask serverini ishga tushirish
+            app.run(host='0.0.0.0', port=PORT)
+        else:
+            logger.info("Polling rejimida ishga tushirilmoqda")
+            bot.polling(none_stop=True, interval=1, timeout=20)
+            
     except Exception as e:
         logger.error(f"Bot xatosi: {e}")
         time.sleep(5)
