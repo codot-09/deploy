@@ -1,2 +1,2 @@
-telebot>=4.0.0
+pyTelegramBotAPI>=4.0.0
 requests>=2.28.0
