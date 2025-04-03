@@ -2,20 +2,45 @@ import telebot
 import requests
 import time
 import os
+import logging
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-import logging
 
-bot = telebot.TeleBot("7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE", parse_mode='HTML')
-executor = ThreadPoolExecutor(max_workers=5)
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
+# Sozlashlar
+BOT_TOKEN = "7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE"
+API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
+BASE_URL = "https://apihut.in/api/download/videos"
 TEMP_DIR = Path("/home/yourusername/video_bot/videos")
-TEMP_DIR.mkdir(exist_ok=True)
+TEMP_DIR.mkdir(exist_ok=True, parents=True)
 
-def download_video(url, chat_id):
+# Botni ishga tushirish
+bot = telebot.TeleBot(BOT_TOKEN)
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Yuklovchi funksiyalar
+def download_video(url: str, chat_id: int) -> Optional[str]:
+    try:
+        headers = {'x-avatar-key': API_KEY}
+        payload = {"video_url": url, "type": "instagram"}
+        
+        response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get('success') and data.get('data'):
+            return data['data'][0]['url']
+        return None
+        
+    except Exception as e:
+        logger.error(f"API request failed: {e}")
+        return None
+
+def save_video(url: str, chat_id: int) -> Optional[str]:
     try:
         temp_file = TEMP_DIR / f"{chat_id}_{int(time.time())}.mp4"
         with requests.get(url, stream=True, timeout=30) as r:
@@ -25,49 +50,64 @@ def download_video(url, chat_id):
                     f.write(chunk)
         return temp_file
     except Exception as e:
-        logger.error(f"Download error: {e}")
+        logger.error(f"Video save failed: {e}")
         return None
 
+# Bot handlerlari
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Instagram video yuklovchi botga xush kelibsiz!\nVideo linkini yuboring.")
+    welcome_text = (
+        "🎬 Instagram Video Yuklovchi Bot\n\n"
+        "Instagram reels/video linkini yuboring:\n"
+        "Misol: https://www.instagram.com/reel/Cxample..."
+    )
+    bot.reply_to(message, welcome_text)
 
 @bot.message_handler(func=lambda m: True)
-def handle_message(message):
+def handle_video_request(message):
     if 'instagram.com' not in message.text:
-        bot.reply_to(message, "Faqat Instagram linklari qabul qilinadi!")
+        bot.reply_to(message, "❌ Faqat Instagram linklari qabul qilinadi!")
         return
 
-    msg = bot.reply_to(message, "Video yuklanmoqda...")
+    processing_msg = bot.reply_to(message, "⏳ Video yuklanmoqda...")
     
-    def process_video():
+    def process_request():
         try:
-            video_url = f"https://apihut.in/api/download/videos?video_url={message.text}"
-            response = requests.get(video_url, headers={'x-avatar-key': "46aae578-102d-422c-911c-5d6d4a70fa84"}, timeout=20)
-            response.raise_for_status()
+            video_url = download_video(message.text, message.chat.id)
+            if not video_url:
+                raise Exception("Video URL not found")
             
-            data = response.json()
-            if data.get('success') and data.get('data'):
-                video_file = download_video(data['data'][0]['url'], message.chat.id)
-                if video_file:
-                    with open(video_file, 'rb') as video:
-                        bot.send_video(message.chat.id, video)
-                    os.remove(video_file)
-                    bot.delete_message(message.chat.id, msg.message_id)
-                    return
-        
+            video_path = save_video(video_url, message.chat.id)
+            if not video_path:
+                raise Exception("Failed to save video")
+            
+            with open(video_path, 'rb') as video_file:
+                bot.send_video(
+                    message.chat.id, 
+                    video_file,
+                    caption="📥 @VideoDownloaderBot orqali yuklandi",
+                    supports_streaming=True
+                )
+            
+            os.remove(video_path)
+            bot.delete_message(message.chat.id, processing_msg.message_id)
+            
         except Exception as e:
-            logger.error(f"Error: {e}")
-        
-        bot.edit_message_text("Xatolik yuz berdi!", message.chat.id, msg.message_id)
+            logger.error(f"Error processing request: {e}")
+            bot.edit_message_text(
+                "❌ Yuklash muvaffaqiyatsiz tugadi. Qayta urunib ko'ring.",
+                message.chat.id,
+                processing_msg.message_id
+            )
 
-    executor.submit(process_video)
+    ThreadPoolExecutor().submit(process_request)
 
+# Ishga tushirish
 if __name__ == "__main__":
     logger.info("Bot ishga tushmoqda...")
     while True:
         try:
-            bot.polling(none_stop=True)
+            bot.infinity_polling()
         except Exception as e:
-            logger.error(f"Polling error: {e}")
+            logger.error(f"Bot error: {e}")
             time.sleep(15)
