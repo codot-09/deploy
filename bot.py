@@ -6,6 +6,8 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import logging
+from typing import Optional
+
 
 API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
 BASE_URL = "https://apihut.in/api/download/videos"
