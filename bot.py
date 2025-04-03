@@ -9,7 +9,7 @@ import logging
 
 API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
 BASE_URL = "https://apihut.in/api/download/videos"
-BOT_TOKEN = "7567730285:AAGm3RDt_mdOC5H5VnfiEPjL6OZx0wsm214"
+BOT_TOKEN = "7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE"
 MAX_REQUESTS_PER_MINUTE = 5
 TEMP_DIR = Path("videos")
 
