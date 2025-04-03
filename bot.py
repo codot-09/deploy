@@ -4,25 +4,18 @@ import time
 import os
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
-import logging
 from pathlib import Path
+import logging
 
-# Sozlamalar
-API_KEY = "1348c1b6-f5e0-414a-8d4c-585c95c92e59"
+API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
 BASE_URL = "https://apihut.in/api/download/videos"
 BOT_TOKEN = "7567730285:AAGm3RDt_mdOC5H5VnfiEPjL6OZx0wsm214"
 MAX_REQUESTS_PER_MINUTE = 5
 TEMP_DIR = Path("videos")
 
-# Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Global o'zgaruvchilar
 USER_REQUESTS = {}
 REQUEST_LOCK = Lock()
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
@@ -37,29 +30,18 @@ def ensure_temp_dir():
 def check_rate_limit(user_id: int) -> bool:
     with REQUEST_LOCK:
         current_time = time.time()
-        USER_REQUESTS[user_id] = [
-            t for t in USER_REQUESTS.get(user_id, [])
-            if current_time - t < 60
-        ]
+        USER_REQUESTS[user_id] = [t for t in USER_REQUESTS.get(user_id, []) if current_time - t < 60]
         if len(USER_REQUESTS[user_id]) < MAX_REQUESTS_PER_MINUTE:
             USER_REQUESTS[user_id].append(current_time)
             return True
         return False
 
 def download_video_api(video_url: str, user_id: int) -> Optional[str]:
-    headers = {
-        'x-avatar-key': API_KEY,
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        "video_url": video_url,
-        "type": "instagram",
-        "user_id": str(user_id)
-    }
+    headers = {'x-avatar-key': API_KEY, 'Content-Type': 'application/json'}
+    payload = {"video_url": video_url, "type": "instagram", "user_id": str(user_id)}
 
     try:
         response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
-
         if response.status_code == 403:
             logger.error("API access forbidden - check API key")
             return None
@@ -97,20 +79,11 @@ def download_and_send_video(download_url: str, chat_id: int) -> None:
                         f.write(chunk)
 
         with open(temp_file, 'rb') as video:
-            bot.send_video(
-                chat_id,
-                video,
-                caption="Video @vd_downloadbot orqali yuklandi",
-                supports_streaming=True,
-                timeout=60 #timeoutni kattalashtirdim.
-            )
+            bot.send_video(chat_id, video, caption="Video @vd_downloadbot orqali yuklandi", supports_streaming=True, timeout=60)
 
     except requests.RequestException as e:
         logger.error(f"Download error: {e}")
-        bot.send_message(
-            chat_id,
-            "Videoni yuklashda xatolik yuz berdi. Iltimos, keyinroq urunib ko'ring."
-        )
+        bot.send_message(chat_id, "Videoni yuklashda xatolik yuz berdi. Iltimos, keyinroq urunib ko'ring.")
     except telebot.apihelper.ApiException as e:
         logger.error(f"Telegram API error: {e}")
     finally:
@@ -135,28 +108,18 @@ def handle_message(message):
     video_url = message.text.strip()
 
     if 'instagram.com' not in video_url:
-        bot.reply_to(
-            message,
-            "Faqat Instagram videolarini yuklash mumkin. Iltimos, Instagram linkini yuboring."
-        )
+        bot.reply_to(message, "Faqat Instagram videolarini yuklash mumkin. Iltimos, Instagram linkini yuboring.")
         return
 
     if not check_rate_limit(chat_id):
-        bot.reply_to(
-            message,
-            "So'rovlar soni chegaralangan. Iltimos, bir daqiqadan keyin urunib ko'ring."
-        )
+        bot.reply_to(message, "So'rovlar soni chegaralangan. Iltimos, bir daqiqadan keyin urunib ko'ring.")
         return
 
     status_msg = bot.reply_to(message, "Video yuklanmoqda...")
 
     download_url = download_video_api(video_url, chat_id)
     if not download_url:
-        bot.edit_message_text(
-            "Videoni yuklab bo'lmadi. Linkni tekshirib, qayta urunib ko'ring.",
-            chat_id=chat_id,
-            message_id=status_msg.message_id
-        )
+        bot.edit_message_text("Videoni yuklab bo'lmadi. Linkni tekshirib, qayta urunib ko'ring.", chat_id=chat_id, message_id=status_msg.message_id)
         return
 
     executor.submit(download_and_send_video, download_url, chat_id)
@@ -172,7 +135,6 @@ def run_bot():
     try:
         bot.remove_webhook()
         time.sleep(1)
-
         logger.info("Polling rejimida ishga tushirilmoqda")
         bot.infinity_polling()
 
