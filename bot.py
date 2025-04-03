@@ -3,7 +3,7 @@ import requests
 import time
 import os
 import logging
-from threading import Lock
+from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
@@ -30,15 +30,23 @@ def download_video(url: str, chat_id: int) -> Optional[str]:
         headers = {'x-avatar-key': API_KEY}
         payload = {"video_url": url, "type": "instagram"}
         
+        # API so'rovini yuborish
         response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
+        
+        # Agar xato bo'lsa, Exception raise qilish
         response.raise_for_status()
+        
         data = response.json()
         
+        # API javobini tekshirish
         if data.get('success') and data.get('data'):
             return data['data'][0]['url']
-        return None
+        else:
+            logger.error("API javobida xatolik mavjud.")
+            return None
         
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
+        # API so'rovi bilan bog'liq barcha xatoliklarni ushlab olish
         logger.error(f"API request failed: {e}")
         return None
 
@@ -51,10 +59,10 @@ def save_video(url: str, chat_id: int) -> Optional[str]:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
         return temp_file  # Faylning to'liq yo'nalishini qaytarish
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
+        # Video saqlashda xatolikni ushlab olish
         logger.error(f"Video save failed: {e}")
         return None
-
 
 # Bot handlerlari
 @bot.message_handler(commands=['start'])
@@ -76,14 +84,17 @@ def handle_video_request(message):
 
     def process_request():
         try:
+            # Video yuklash
             video_url = download_video(message.text, message.chat.id)
             if not video_url:
-                raise Exception("Video URL not found")
+                raise Exception("Video URL topilmadi")
             
+            # Video saqlash
             video_path = save_video(video_url, message.chat.id)
             if not video_path:
-                raise Exception("Failed to save video")
+                raise Exception("Video saqlashda xatolik")
             
+            # Videoni foydalanuvchiga yuborish
             with open(video_path, 'rb') as video_file:
                 bot.send_video(
                     message.chat.id,
@@ -92,10 +103,12 @@ def handle_video_request(message):
                     supports_streaming=True
                 )
             
+            # Video faylini o'chirish
             os.remove(video_path)
             bot.delete_message(message.chat.id, processing_msg.message_id)
             
         except Exception as e:
+            # Xatolikni qayta ishlash va foydalanuvchiga bildirish
             logger.error(f"Error processing request: {e}")
             bot.edit_message_text(
                 "❌ Yuklash muvaffaqiyatsiz tugadi. Qayta urunib ko'ring.",
