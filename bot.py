@@ -42,30 +42,35 @@ def download_video_api(video_url: str, user_id: int) -> Optional[str]:
     headers = {'x-avatar-key': API_KEY, 'Content-Type': 'application/json'}
     payload = {"video_url": video_url, "type": "instagram", "user_id": str(user_id)}
 
-    try:
-        response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
-        if response.status_code == 403:
-            logger.error("API access forbidden - check API key")
+    retries = 3  # Retry count for API request failures
+    for attempt in range(retries):
+        try:
+            response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
+            response.raise_for_status()
+
+            if response.status_code == 403:
+                logger.error("API access forbidden - check API key")
+                return None
+
+            data = response.json()
+
+            if data.get("success") == 1 and "data" in data and data["data"]:
+                return data["data"][0]["url"]
+
+            logger.error(f"API response error: {data}")
             return None
 
-        response.raise_for_status()
-        data = response.json()
+        except requests.Timeout:
+            logger.error("API request timed out, retrying...")
+        except requests.RequestException as e:
+            logger.error(f"API request failed: {e}, retrying...")
+        except ValueError as e:
+            logger.error(f"JSON decode error: {e}, retrying...")
 
-        if data.get("success") == 1 and "data" in data and data["data"]:
-            return data["data"][0]["url"]
+        time.sleep(5)  # Wait before retrying
 
-        logger.error(f"API response error: {data}")
-        return None
-
-    except requests.Timeout:
-        logger.error("API request timed out")
-        return None
-    except requests.RequestException as e:
-        logger.error(f"API request failed: {e}")
-        return None
-    except ValueError as e:
-        logger.error(f"JSON decode error: {e}")
-        return None
+    logger.error("API request failed after multiple attempts")
+    return None
 
 def download_and_send_video(download_url: str, chat_id: int) -> None:
     temp_file = TEMP_DIR / f"video_{chat_id}_{int(time.time())}.mp4"
