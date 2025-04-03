@@ -11,8 +11,9 @@ from pathlib import Path
 BOT_TOKEN = "7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE"
 API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
 BASE_URL = "https://apihut.in/api/download/videos"
-TEMP_DIR = Path("/home/yourusername/video_bot/videos")
-TEMP_DIR.mkdir(exist_ok=True, parents=True)
+TEMP_DIR = Path("/home/codot09/video_bot/videos")  # Serverdagi yo'nalish
+TEMP_DIR.mkdir(exist_ok=True, parents=True)  # Katalogni yaratish
+
 
 # Botni ishga tushirish
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -42,16 +43,17 @@ def download_video(url: str, chat_id: int) -> Optional[str]:
 
 def save_video(url: str, chat_id: int) -> Optional[str]:
     try:
-        temp_file = TEMP_DIR / f"{chat_id}_{int(time.time())}.mp4"
+        temp_file = TEMP_DIR / f"{chat_id}_{int(time.time())}.mp4"  # Lokallashtirilgan fayl yo'nalishi
         with requests.get(url, stream=True, timeout=30) as r:
             r.raise_for_status()
             with open(temp_file, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        return temp_file
+        return temp_file  # Faylning to'liq yo'nalishini qaytarish
     except Exception as e:
         logger.error(f"Video save failed: {e}")
         return None
+
 
 # Bot handlerlari
 @bot.message_handler(commands=['start'])
@@ -70,7 +72,7 @@ def handle_video_request(message):
         return
 
     processing_msg = bot.reply_to(message, "⏳ Video yuklanmoqda...")
-    
+
     def process_request():
         try:
             video_url = download_video(message.text, message.chat.id)
@@ -83,7 +85,7 @@ def handle_video_request(message):
             
             with open(video_path, 'rb') as video_file:
                 bot.send_video(
-                    message.chat.id, 
+                    message.chat.id,
                     video_file,
                     caption="📥 @VideoDownloaderBot orqali yuklandi",
                     supports_streaming=True
@@ -101,6 +103,7 @@ def handle_video_request(message):
             )
 
     ThreadPoolExecutor().submit(process_request)
+
 
 # Ishga tushirish
 if __name__ == "__main__":
