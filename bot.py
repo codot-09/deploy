@@ -10,7 +10,7 @@ from typing import Optional
 
 # Sozlashlar
 BOT_TOKEN = "7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE"
-API_KEY = "46aae578-102d-422c-911c-5d6d4a70fa84"
+API_KEY = "806c9d85-263d-4ad2-9330-633520dd20d9"
 BASE_URL = "https://apihut.in/api/download/videos"
 TEMP_DIR = Path("/home/codot09/video_bot/videos")  # Serverdagi yo'nalish
 TEMP_DIR.mkdir(exist_ok=True, parents=True)  # Katalogni yaratish
