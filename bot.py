@@ -54,14 +54,16 @@ def ask_gemini(prompt: str) -> str:
         response = requests.post(GEMINI_API_URL, json=payload, headers=headers, timeout=20)
         response.raise_for_status()
         data = response.json()
-        
+
         candidates = data.get("candidates", [])
         if not candidates:
             return "⚠️ AI javob bera olmadi. Iltimos, boshqa savol berib ko‘ring."
 
         # Javobni olish va formatlash
         text = candidates[0]["content"]["parts"][0]["text"]
-        return f"🤖 AI javobi:\n\n{text.strip()}"
+        formatted_text = format_response(text)  # Formatlash
+
+        return f"🤖 AI javobi:\n\n{formatted_text.strip()}"
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Gemini API error: {e}")
