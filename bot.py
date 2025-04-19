@@ -1,8 +1,10 @@
+import os
 import telebot
 import requests
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 # === Sozlamalar ===
 BOT_TOKEN = "8113086612:AAH1I2ffEr2FQH04PSlpTRr8Rony5DYMd0g"
@@ -18,6 +20,24 @@ logging.basicConfig(
 
 # === Bot ===
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# === Lock mexanizmi ===
+LOCK_FILE = '/tmp/bot_lock.lock'  # Lock fayli
+
+def check_lock():
+    """Lock faylini tekshiradi, faqat bitta instansiya ishga tushishini ta'minlaydi."""
+    if os.path.exists(LOCK_FILE):
+        logger.error("Bot boshqa joyda ishlamoqda!")
+        return False
+    else:
+        with open(LOCK_FILE, 'w') as lock_file:
+            lock_file.write("locked")
+        return True
+
+def release_lock():
+    """Lock faylini o'chiradi."""
+    if os.path.exists(LOCK_FILE):
+        os.remove(LOCK_FILE)
 
 # === Gemini API bilan ishlash ===
 def ask_gemini(prompt: str) -> str:
@@ -79,10 +99,16 @@ def handle_user_message(message):
 
 # === Ishga tushirish ===
 if __name__ == "__main__":
-    logger.info("Bot ishga tushmoqda...")
-    while True:
+    # Lockni tekshirish va botning faqat bitta instansiyasining ishlashini ta'minlash
+    if check_lock():
+        logger.info("Bot ishga tushmoqda...")
         try:
             bot.infinity_polling()
         except Exception as e:
             logger.error(f"Bot ishlashda xatolik: {e}")
             time.sleep(15)
+        finally:
+            # Bot tugatilganda lock faylini o'chirish
+            release_lock()
+    else:
+        logger.error("Bot boshqa joyda ishlamoqda, yangi instansiya ishga tushirilmaydi.")
