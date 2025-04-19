@@ -1,130 +1,88 @@
 import telebot
 import requests
-import time
-import os
 import logging
-from threading import Thread
+import time
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from typing import Optional
 
-# Sozlashlar
-BOT_TOKEN = "7897693976:AAEpm78aPN8e2JS9_UGR7s0Ch81jqYYO2XE"
-API_KEY = "806c9d85-263d-4ad2-9330-633520dd20d9"
-BASE_URL = "https://apihut.in/api/download/videos"
-TEMP_DIR = Path("/home/codot09/videos")  # Serverdagi yo'nalish
-TEMP_DIR.mkdir(exist_ok=True, parents=True)  # Katalogni yaratish
+# === Sozlamalar ===
+BOT_TOKEN = "8113086612:AAH1I2ffEr2FQH04PSlpTRr8Rony5DYMd0g"
+GEMINI_API_KEY = "AIzaSyCBQ3c-xPQNOy9joKbF9g0_OEzYgPDUVzw"
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
-
-# Botni ishga tushirish
-bot = telebot.TeleBot(BOT_TOKEN)
+# === Logger ===
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Yuklovchi funksiyalar
-def download_video(url: str, chat_id: int) -> Optional[str]:
+# === Bot ===
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# === Gemini API bilan ishlash ===
+def ask_gemini(prompt: str) -> str:
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+
     try:
-        headers = {'x-avatar-key': API_KEY}
-        payload = {"video_url": url, "type": "instagram"}
-        
-        # API so'rovini yuborish
-        response = requests.post(BASE_URL, json=payload, headers=headers, timeout=20)
-        
-        # Agar xato bo'lsa, Exception raise qilish
+        response = requests.post(GEMINI_API_URL, json=payload, headers=headers, timeout=20)
         response.raise_for_status()
-        
         data = response.json()
         
-        # API javobini tekshirish
-        if data.get('success') and data.get('data'):
-            return data['data'][0]['url']
-        else:
-            logger.error("API javobida xatolik mavjud.")
-            return None
-        
-    except requests.exceptions.RequestException as e:
-        # API so'rovi bilan bog'liq barcha xatoliklarni ushlab olish
-        logger.error(f"API request failed: {e}")
-        return None
+        candidates = data.get("candidates", [])
+        if not candidates:
+            return "⚠️ AI javob bera olmadi. Iltimos, boshqa savol berib ko‘ring."
 
-def save_video(url: str, chat_id: int) -> Optional[str]:
-    try:
-        temp_file = TEMP_DIR / f"{chat_id}_{int(time.time())}.mp4"  # Lokallashtirilgan fayl yo'nalishi
-        with requests.get(url, stream=True, timeout=30) as r:
-            r.raise_for_status()
-            with open(temp_file, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        return temp_file  # Faylning to'liq yo'nalishini qaytarish
-    except requests.exceptions.RequestException as e:
-        # Video saqlashda xatolikni ushlab olish
-        logger.error(f"Video save failed: {e}")
-        return None
+        # Javobni olish va formatlash
+        text = candidates[0]["content"]["parts"][0]["text"]
+        return f"🤖 AI javobi:\n\n{text.strip()}"
 
-# Bot handlerlari
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Gemini API error: {e}")
+        return "❌ So‘rov yuborishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko‘ring."
+
+# === /start komandasi ===
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
-        "🎬 Instagram Video Yuklovchi Bot\n\n"
-        "Instagram reels/video linkini yuboring:\n"
-        "Misol: https://www.instagram.com/reel/Cxample..."
+        "👋 Assalomu alaykum!\n\n"
+        "Men sun'iy intellekt asosidagi botman.\n"
+        "Savolingizni yoki matningizni yozing — men javob beraman. ✨"
     )
     bot.reply_to(message, welcome_text)
 
-@bot.message_handler(func=lambda m: True)
-def handle_video_request(message):
-    if 'instagram.com' not in message.text:
-        bot.reply_to(message, "❌ Faqat Instagram linklari qabul qilinadi!")
-        return
-
-    processing_msg = bot.reply_to(message, "⏳ Video yuklanmoqda...")
+# === Matnli so‘rovlar ===
+@bot.message_handler(func=lambda msg: True, content_types=['text'])
+def handle_user_message(message):
+    thinking_msg = bot.reply_to(message, "⏳ Javob tayyorlanmoqda...")
 
     def process_request():
+        reply = ask_gemini(message.text)
         try:
-            # Video yuklash
-            video_url = download_video(message.text, message.chat.id)
-            if not video_url:
-                raise Exception("Video URL topilmadi")
-            
-            # Video saqlash
-            video_path = save_video(video_url, message.chat.id)
-            if not video_path:
-                raise Exception("Video saqlashda xatolik")
-            
-            # Videoni foydalanuvchiga yuborish
-            with open(video_path, 'rb') as video_file:
-                bot.send_video(
-                    message.chat.id,
-                    video_file,
-                    caption="📥 @VideoDownloaderBot orqali yuklandi",
-                    supports_streaming=True
-                )
-            
-            # Video faylini o'chirish
-            os.remove(video_path)
-            bot.delete_message(message.chat.id, processing_msg.message_id)
-            
-        except Exception as e:
-            # Xatolikni qayta ishlash va foydalanuvchiga bildirish
-            logger.error(f"Error processing request: {e}")
             bot.edit_message_text(
-                "❌ Yuklash muvaffaqiyatsiz tugadi. Qayta urunib ko'ring.",
-                message.chat.id,
-                processing_msg.message_id
+                reply,
+                chat_id=message.chat.id,
+                message_id=thinking_msg.message_id,
+                parse_mode="Markdown"
             )
+        except Exception as e:
+            logger.error(f"Bot response error: {e}")
+            bot.send_message(message.chat.id, reply)
 
     ThreadPoolExecutor().submit(process_request)
 
-
-# Ishga tushirish
+# === Ishga tushirish ===
 if __name__ == "__main__":
     logger.info("Bot ishga tushmoqda...")
     while True:
         try:
             bot.infinity_polling()
         except Exception as e:
-            logger.error(f"Bot error: {e}")
+            logger.error(f"Bot ishlashda xatolik: {e}")
             time.sleep(15)
