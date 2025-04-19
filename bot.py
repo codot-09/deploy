@@ -105,7 +105,9 @@ if __name__ == "__main__":
     if check_lock():
         logger.info("Bot ishga tushmoqda...")
         try:
+            bot.remove_webhook()
             bot.infinity_polling()
+
         except Exception as e:
             logger.error(f"Bot ishlashda xatolik: {e}")
             time.sleep(15)
