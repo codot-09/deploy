@@ -95,7 +95,6 @@ def handle_user_message(message):
 
     ThreadPoolExecutor().submit(process_request)
 
-# === Botni ishga tushirish ===
 if __name__ == "__main__":
     logger.info("✅ Bot ishga tushmoqda...")
     while True:
@@ -105,3 +104,4 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Bot ishlashda xatolik: {e}")
             time.sleep(15)
+            break  # Pollingni to'xtatish uchun break
